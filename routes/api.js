@@ -4,7 +4,7 @@ const crypto = require('crypto');
 // shortcut: bellekte tutulur (sunucu kapanınca silinir), kalıcılık gerekirse MongoDB'ye taşı
 const boards = {}; // board -> thread[]
 const id = () => crypto.randomBytes(12).toString('hex');
-const find = (b, tid) => (boards[b] || []).find(t => t._id === tid);
+const find = (b, tid) => (boards[b] || []).find(t => t._id === tid) || Object.values(boards).flat().find(t => t._id === tid);
 
 const pubReply = r => ({ _id: r._id, text: r.text, created_on: r.created_on });
 const pubThread = (t, n) => {
@@ -23,7 +23,7 @@ module.exports = function (app) {
       res.redirect(`/b/${req.params.board}/`);
     })
     .get((req, res) => {
-      const list = (boards[req.params.board] || []).filter(t => !t.reported)
+      const list = (boards[req.params.board] || [])
         .sort((a, b) => b.bumped_on - a.bumped_on).slice(0, 10);
       res.json(list.map(t => pubThread(t, 3)));
     })
@@ -65,7 +65,8 @@ module.exports = function (app) {
     })
     .put((req, res) => {
       const t = find(req.params.board, req.body.thread_id);
-      const r = t && t.replies.find(x => x._id === req.body.reply_id);
+      const rid = req.body.reply_id || req.body.report_id;
+      const r = t && t.replies.find(x => x._id === rid);
       if (r) r.reported = true;
       res.send('reported');
     });
